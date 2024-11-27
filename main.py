@@ -15,7 +15,7 @@ class Bus(BaseModel):
     bus_identifier: uuid.UUID
 
 
-BUSES_ENDPOINT = "http://127.0.0.1:8001"
+BUSES_DATA_ENDPOINT = "http://127.0.0.1:8001"
 BUSES_LOCATION_ENDPOINT = "http://127.0.0.1:8002"
 
 BUS_COMPANY_ID = 1
@@ -34,7 +34,7 @@ def get_bus_route_stops(bus_route_name: str):
 
 
 def get_available_buses(route_id: int):
-    url = BUSES_ENDPOINT + f"/bus-route/get-buses-from-route/?route_id={route_id}"
+    url = BUSES_DATA_ENDPOINT + f"/bus-route/get-buses-from-route/?route_id={route_id}"
     request = requests.get(url)
     if request.status_code != 200:
         print("Error getting available buses")
@@ -61,7 +61,7 @@ def assign_random_starting_stop(bus_routes_data):
     for key in bus_routes_data.keys():
         for bus in bus_routes_data[key]["buses"]:
             random_stop = random.randrange(
-                1, bus_routes_data[key]["number_of_stops"] - 1
+                1, bus_routes_data[key]["number_of_stops"] - 2
             )
             bus["current_stop"] = random_stop
             bus["direction"] = random.choice(["forward", "backward"])
@@ -69,13 +69,19 @@ def assign_random_starting_stop(bus_routes_data):
 
 def update_stops(bus_routes_data):
     for key in bus_routes_data.keys():
-        first_stop = 0
-        last_stop = bus_routes_data[key]["number_of_stops"]
+        first_stop = 1
+        last_stop = bus_routes_data[key]["number_of_stops"] - 1
         for bus in bus_routes_data[key]["buses"]:
-            if bus["current_stop"] == last_stop:
+            next_stop_is_the_last_one = bus["current_stop"] == last_stop
+            next_step_is_the_first_one = bus["current_stop"] == first_stop
+            if next_stop_is_the_last_one:
                 bus["direction"] = "backward"
-            elif bus["current_stop"] == first_stop:
+                bus["current_stop"] -= 1
+                return
+            if next_step_is_the_first_one:
                 bus["direction"] = "forward"
+                bus["current_stop"] += 1
+                return
             if bus["direction"] == "forward":
                 bus["current_stop"] += 1
             else:
@@ -86,7 +92,12 @@ def update_buses_location(bus_routes_data):
     for key in bus_routes_data.keys():
         for bus in bus_routes_data[key]["buses"]:
             bus_ = Bus(**bus)
-            bus_location = bus_routes_data[key]["stops"][bus["current_stop"]]
+            try:
+                bus_location = bus_routes_data[key]["stops"][bus["current_stop"]]
+            except IndexError:
+                print(f"Error getting bus location on stop: {bus['current_stop']}")
+                print(f"Number of stops: {len(bus_routes_data[key]['stops'])}")
+                input()
             update_bus_location(
                 bus=bus_,
                 route_id=bus["route_id"],
@@ -109,7 +120,6 @@ def update_bus_location(
         "coordinates": {"type": "Point", "coordinates": [long, lat]},
         "stop_name": stop_name,
     }
-    print(data)
     url = BUSES_LOCATION_ENDPOINT + "/bus-location/update/"
     request = requests.post(url, json=data)
     if request.status_code != 200:
