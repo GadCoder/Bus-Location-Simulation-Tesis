@@ -69,15 +69,17 @@ def assign_random_starting_stop(bus_routes_data):
 
 def update_stops(bus_routes_data):
     for key in bus_routes_data.keys():
+        first_stop = 0
+        last_stop = bus_routes_data[key]["number_of_stops"]
         for bus in bus_routes_data[key]["buses"]:
+            if bus["current_stop"] == last_stop:
+                bus["direction"] = "backward"
+            elif bus["current_stop"] == first_stop:
+                bus["direction"] = "forward"
             if bus["direction"] == "forward":
                 bus["current_stop"] += 1
             else:
                 bus["current_stop"] -= 1
-            if bus["current_stop"] == bus_routes_data[key]["number_of_stops"]:
-                bus["direction"] = "backward"
-            elif bus["current_stop"] == 0:
-                bus["direction"] = "forward"
 
 
 def update_buses_location(bus_routes_data):
@@ -123,17 +125,12 @@ def main():
             f"Number of stops in route {key}: {bus_routes_data[key]["number_of_stops"]}"
         )
         print(f"Number of buses in route {key}: {len(bus_routes_data[key]["buses"])}")
-        for bus in bus_routes_data[key]["buses"]:
-            print(f"Bus: {bus['plate']} starting at stop {bus['current_stop']}")
 
     while True:
+        print("Updating data")
         update_stops(bus_routes_data)
         update_buses_location(bus_routes_data)
-        for key in bus_routes_data.keys():
-            print(key)
-            for bus in bus_routes_data[key]["buses"]:
-                print(f"Bus: {bus['plate']} at stop {bus['current_stop']}")
-        time.sleep(5)
+        time.sleep(10)
 
 
 if __name__ == "__main__":
